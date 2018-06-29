@@ -6,49 +6,37 @@
 
 from __future__ import absolute_import, division, print_function
 
-import sys
-import os
 import errno
+import os
+import sys
 import tempfile
 from .output import out
 
 
+class SingleInstanceException(BaseException):
+    pass
+
+
 class SingleInstance(object):
-    """
-    To prevent a script from running in parallel instantiate the
-    SingleInstance() class. If is there another instance
-    already running it will exit the application with the message
-    "Another instance is already running, quitting.",
-    returning an error code of -1.
-
-    >>> me = SingleInstance()
-
-    This is very useful to execute scripts by crontab that should only run
-    one at a time.
-
-    Note that this works by creating a lock file with a filename based
-    on the full path to the script file.
-    """
-
     def __init__(self, flavor_id="", exit_code=-1):
-        """Create an exclusive lockfile or exit with an error and the given
-        exit code."""
         self.initialized = False
-        scriptname = os.path.splitext(os.path.realpath(sys.argv[0]))[0]
-        lockname = scriptname.replace("/", "-").replace(":", "").replace("\\", "-")
+        basename = os.path.splitext(os.path.realpath(sys.argv[0]))[0].replace(
+            "/", "-").replace(":", "").replace("\\", "-")
         if flavor_id:
-            lockname += "-%s" % flavor_id
-        lockname += '.lock'
-        tempdir = tempfile.gettempdir()
-        self.lockfile = os.path.normpath(os.path.join(tempdir, lockname))
+            basename += "-%s" % flavor_id
+        basename += '.lock'
+        self.lockfile = os.path.normpath(
+            os.path.join(tempfile.gettempdir(), basename))
+
         out.debug("SingleInstance lockfile: " + self.lockfile)
         if sys.platform == 'win32':
             try:
-                # file already exists, try to remove it in case the previous
-                # execution was interrupted
+                # file already exists, we try to remove (in case previous
+                # execution was interrupted)
                 if os.path.exists(self.lockfile):
                     os.unlink(self.lockfile)
-                self.fd = os.open(self.lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+                self.fd = os.open(
+                    self.lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR)
             except OSError:
                 type, e, tb = sys.exc_info()
                 if e.errno == errno.EACCES:  # EACCES == 13
@@ -57,6 +45,7 @@ class SingleInstance(object):
         else:  # non Windows
             import fcntl
             self.fp = open(self.lockfile, 'w')
+            self.fp.flush()
             try:
                 fcntl.lockf(self.fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 # raises IOError on Python << 3.3, else OSError
@@ -67,7 +56,10 @@ class SingleInstance(object):
     def exit(self, exit_code):
         """Exit with an error message and the given exit code."""
         out.error("Another instance is already running, quitting.")
-        sys.exit(exit_code)
+        if exit_code is not None:
+            sys.exit(exit_code)
+        else:
+            raise SingleInstanceException()
 
     def __del__(self):
         """Remove the lock file."""
@@ -81,6 +73,7 @@ class SingleInstance(object):
             else:
                 import fcntl
                 fcntl.lockf(self.fp, fcntl.LOCK_UN)
+                os.close(self.fp)
                 if os.path.isfile(self.lockfile):
                     os.unlink(self.lockfile)
         except Exception as e:

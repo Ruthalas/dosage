@@ -37,10 +37,10 @@ class TestSingleton(object):
         p = Process(target=f, args=("test-3",))
         p.start()
         p.join()
-        assert p.exitcode == 1
+        assert p.exitcode != 0
         # third instance
         p = Process(target=f, args=("test-3",))
         p.start()
         p.join()
-        assert p.exitcode == 1
+        assert p.exitcode != 0
         del me  # now the lock should be removed
