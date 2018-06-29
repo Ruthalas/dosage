@@ -1,24 +1,27 @@
 # -*- coding: utf-8 -*-
-# Copied from: https://github.com/pycontribs/tendo
+# Imported from: https://github.com/pycontribs/tendo
 # License: PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
 # Author: Sorin Sbarnea
-# Changes: changed logging and formatting
+# Changes: Modified to be a context manager, use dosage logging
 
 from __future__ import absolute_import, division, print_function
 
-from dosagelib import singleton
+import time
 from multiprocessing import Process
 
+from dosagelib import singleton
 
-def f(flavor_id):
-    return singleton.SingleInstance(flavor_id=flavor_id, exit_code=1)
+
+def f(basepath):
+    with singleton.SingleInstance(basepath=basepath, exit_code=1):
+        time.sleep(0.05)
 
 
 class TestSingleton(object):
     def test_1(self):
         # test in current process
-        me = singleton.SingleInstance(flavor_id="test-1")
-        del me  # now the lock should be removed
+        with singleton.SingleInstance(basepath="test-1"):
+            pass
         assert True
 
     def test_2(self):
@@ -32,15 +35,14 @@ class TestSingleton(object):
     def test_3(self):
         # test in current process and subprocess with failure
         # start first instance
-        me = f("test-3")
-        # second instance
-        p = Process(target=f, args=("test-3",))
-        p.start()
-        p.join()
-        assert p.exitcode != 0
-        # third instance
-        p = Process(target=f, args=("test-3",))
-        p.start()
-        p.join()
-        assert p.exitcode != 0
-        del me  # now the lock should be removed
+        with singleton.SingleInstance(basepath="test-3"):
+            # second instance
+            p = Process(target=f, args=("test-3",))
+            p.start()
+            p.join()
+            assert p.exitcode != 0
+            # third instance
+            p = Process(target=f, args=("test-3",))
+            p.start()
+            p.join()
+            assert p.exitcode != 0

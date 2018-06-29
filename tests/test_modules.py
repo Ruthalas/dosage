@@ -14,7 +14,7 @@ import httpmocks
 
 def cmd(*options):
     """'Fake' run dosage with given options."""
-    assert dosagelib.cmd.main(("--allow-multiple",) + options) == 0
+    assert dosagelib.cmd.main(options) == 0
 
 
 @pytest.mark.usefixtures("nosleep")

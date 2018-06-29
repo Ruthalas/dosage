@@ -84,8 +84,6 @@ def setup_options():
         help='fetch comics in parallel. Specify the number of connections')
     parser.add_argument('--adult', action='store_true',
         help='confirms that you are old enough to view adult content')
-    parser.add_argument('--allow-multiple', action='store_true',
-        help='allows multiple instances to run at the same time. Use if you know what you are doing.')
     # used for development testing prev/next matching
     parser.add_argument('--dry-run', action='store_true',
         help=argparse.SUPPRESS)
@@ -215,9 +213,6 @@ def vote_comic(scraperobj):
 def run(options):
     """Execute comic commands."""
     set_output_info(options)
-    # ensure only one instance of dosage is running
-    if not options.allow_multiple:
-        singleton.SingleInstance()
     if options.version:
         return display_version(options.verbose)
     if options.list:
@@ -233,7 +228,9 @@ def run(options):
         return display_help(options)
     if options.vote:
         return vote_comics(options)
-    return director.getComics(options)
+    # ensure only one instance of dosage is running
+    with singleton.SingleInstance(basepath=options.basepath):
+        return director.getComics(options)
 
 
 def do_list(column_list=True, verbose=False, listall=False):

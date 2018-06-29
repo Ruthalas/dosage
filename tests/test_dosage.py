@@ -17,7 +17,7 @@ import httpmocks
 
 def cmd(*options):
     """'Fake' run dosage with given options."""
-    return dosagelib.cmd.main(('--allow-multiple',) + options)
+    return dosagelib.cmd.main(options)
 
 
 def cmd_ok(*options):
